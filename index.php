@@ -16,11 +16,18 @@ $op = Request::getString('op');
 $id = Request::getInt('id');
 $action_id = Request::getInt('action_id');
 $accept = Request::getInt('accept');
+$files_sn = Request::getInt('files_sn');
 
 /*-----------執行動作判斷區----------*/
 switch ($op) {
 
-    //新增表單
+    // 下載檔案
+    case "tufdl":
+    $TadUpFiles = new TadUpFiles('beck_signup');
+    $TadUpFiles->add_file_counter($files_sn);
+    exit;
+
+    //新增活動表單
     case 'beck_signup_actions_create':
         Beck_signup_actions::create();
         break;
@@ -80,7 +87,7 @@ switch ($op) {
         exit;
     //刪除報名資料
     case 'beck_signup_data_destroy':
-        $uid = $_SESSION['beck_signup_adm'] ? null : $xoopsUser->uid();
+        $uid = $_SESSION['can_add'] ? null : $xoopsUser->uid();
         $signup = Beck_signup_data::get($id, $uid);
         Beck_signup_data::destroy($id);
         Beck_signup_data::mail($id, 'destroy', $signup);
@@ -103,13 +110,13 @@ switch ($op) {
 
     default:
     if (empty($id)) {
-        Beck_signup_actions::index();
+        Beck_signup_actions::index($xoopsModuleConfig['only_enable']);
         $op = 'beck_signup_actions_index';
     } else {
         Beck_signup_actions::show($id);
         $op = 'beck_signup_actions_show';
     }
-    break;
+        break;
 }
 
 /*-----------function區--------------*/

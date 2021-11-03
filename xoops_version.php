@@ -39,6 +39,7 @@ $modversion['sqlfile']['mysql'] = 'sql/mysql.sql';
 $modversion['tables'][]= 'beck_signup_actions';
 $modversion['tables'][]= 'beck_signup_data';
 $modversion['tables'][]= 'beck_signup_data_center';
+$modversion['tables'][]= 'beck_signup_files_center';
 
 //---後台管理介面設定---//
 $modversion['hasAdmin'] = 1;
@@ -50,38 +51,59 @@ $modversion['hasMain'] = 1;
 // $modversion['sub'][] = ['name' => '子選項文字', 'url' => '子選項連結位址'];
 
 //---模組自動功能---//
-// $modversion['onInstall'] = "include/onInstall.php";
-// $modversion['onUpdate'] = "include/onUpdate.php";
-// $modversion['onUninstall'] = "include/onUninstall.php";
+$modversion['onInstall'] = "include/onInstall.php";
+$modversion['onUpdate'] = "include/onUpdate.php";
+$modversion['onUninstall'] = "include/onUninstall.php";
 
 //---樣板設定---//
 $modversion['templates'][] = ['file' => 'beck_signup_admin.tpl', 'description' => '後台共同樣板'];
 $modversion['templates'][] = ['file' => 'beck_signup_index.tpl', 'description' => '前台共同樣板'];
 
 //---搜尋---//
-// $modversion['hasSearch'] = 1;
-// $modversion['search'] = ['file' => 'include/search.php', 'func' => '搜尋函數名稱'];
+$modversion['hasSearch'] = 1;
+$modversion['search'] = ['file' => 'include/search.php', 'func' => 'beck_signup_search'];
 
 //---區塊設定---//
-// $modversion['blocks'][] = [
-//     'file' => '區塊檔.php',
-//     'name' => '區塊名稱',
-//     'description' => '區塊說明',
-//     'show_func' => '執行區塊函數名稱',
-//     'template' => '區塊樣板.tpl',
-//     'edit_func' => '編輯區塊函數名稱',
-//     'options' => '設定值1|設定值2',
-// ];
+
+$modversion['blocks'][] = [
+    'file' => 'action_list.php',
+    'name' => '可報名活動一覽',
+    'description' => '列出所有可報名的活動',
+    'show_func' => 'action_list',
+    'template' => 'action_list.tpl',
+    'edit_func' => 'action_list_edit',
+    'options' => '5|action_date desc',
+];
+    
+$modversion['blocks'][] = [
+    'file' => 'action_signup.php',
+    'name' => '活動報名焦點',
+    'description' => '可選擇某一活動讓使用者報名',
+    'show_func' => 'action_signup',
+    'template' => 'action_signup.tpl',
+    'edit_func' => 'action_signup_edit',
+    'options' => '',
+];
 
 //---偏好設定---//
-// $modversion['config'][] = [
-//     'name' => '偏好設定名稱（英文）',
-//     'title' => '_MI_偏好設定標題_常數',
-//     'description' => '_MI_偏好設定說明_常數',
-//     'formtype' => '輸入表單類型',
-//     'valuetype' => '輸入值類型',
-//     'default' => '預設值',
-// ];
+$modversion['config'][] = [
+    'name' => 'show_number',
+    'title' => '_MI_TAD_SIGNUP_SHOW_NUMBER',
+    'description' => '_MI_TAD_SIGNUP_SHOW_NUMBER_DESC',
+    'formtype' => 'textbox',
+    'valuetype' => 'int',
+    'default' => '5',
+    // 'options'=>['5則'=>5,'15則'=>15], //有select下拉選單才要用
+];
+
+$modversion['config'][] = [
+    'name' => 'only_enable',
+    'title' => '_MI_TAD_SIGNUP_ONLY_ENABLE',
+    'description' => '_MI_TAD_SIGNUP_ONLY_ENABLE_DESC',
+    'formtype' => 'yesno',
+    'valuetype' => 'int',
+    'default' => '0',
+];
 
 //---評論---//
 // $modversion['hasComments'] = 1;

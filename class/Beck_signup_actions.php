@@ -10,38 +10,53 @@ use XoopsModules\Tadtools\My97DatePicker;
 use XoopsModules\Tadtools\SweetAlert;
 use XoopsModules\Beck_signup\Beck_signup_data;
 use XoopsModules\Tadtools\BootstrapTable;
+use XoopsModules\Tadtools\CkEditor;
+use XoopsModules\Tadtools\TadUpFiles;
 
 class Beck_signup_actions
 {
     //列出所有資料
-    public static function index()
+    public static function index($only_enable = true)
     {
-        global $xoopsTpl;
+        global $xoopsTpl , $xoopsUser;
 
-        $all_data = self::get_all();
+        $all_data = self::get_all($only_enable);
         // var_dump($all_data);
         // Utility::dd($all_data);
         $xoopsTpl->assign('all_data', $all_data);
+
+        $now_uid = $xoopsUser ? $xoopsUser->uid() : 0;
+        $xoopsTpl->assign('now_uid', $now_uid);
     }
 
     //編輯表單
     public static function create($id = '')
     {
         global $xoopsTpl, $xoopsUser;
-        if (!$_SESSION['beck_signup_adm']) {
+        if (!$_SESSION['can_add']) {
             redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
         }
 
+        $uid = $xoopsUser ? $xoopsUser->uid() : 0;
 
-        //抓取預設值
-        $db_values = empty($id) ? [] : self::get($id);
-        $db_values['number'] = empty($id) ? 50 : $db_values['number'];
-        $db_values['enable'] = empty($id) ? 1 : $db_values['enable'];
+        if ($id) {
+            //抓取預設值
+            $db_values = empty($id) ? [] : self::get($id);
 
+            if ($uid != $db_values['uid'] && !$_SESSION['beck_signup_adm']) {
+                redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
+            }
+            
+            $db_values['number'] = empty($id) ? 50 : $db_values['number'];
+            $db_values['enable'] = empty($id) ? 1 : $db_values['enable'];
 
-        foreach ($db_values as $col_name => $col_val) {
-            $$col_name = $col_val;
-            $xoopsTpl->assign($col_name, $col_val);
+            foreach ($db_values as $col_name => $col_val) {
+                $$col_name = $col_val;
+                $xoopsTpl->assign($col_name, $col_val);
+            }
+
+        } else {
+            $xoopsTpl->assign('uid', $uid);
         }
 
         $op = empty($id) ? "beck_signup_actions_store" : "beck_signup_actions_update";
@@ -57,9 +72,17 @@ class Beck_signup_actions
         $token_form = $token->render();
         $xoopsTpl->assign("token_form", $token_form);
 
-        $uid = $xoopsUser ? $xoopsUser->uid() : 0;
         $xoopsTpl->assign("uid", $uid);
         My97DatePicker::render();
+        $CkEditor = new CkEditor("beck_signup", "detail", $detail); //模組名稱，欄位名稱，值
+        $CkEditor->setHeight(350);
+        $editor = $CkEditor->render();
+        $xoopsTpl->assign('editor', $editor);
+
+        $TadUpFiles = new TadUpFiles("beck_signup");
+        $TadUpFiles->set_col('action_id', $id);
+        $upform = $TadUpFiles->upform(true, 'upfile');
+        $xoopsTpl->assign("upform", $upform);
     }
 
     //新增資料
@@ -67,7 +90,7 @@ class Beck_signup_actions
     {
         global $xoopsDB;
 
-        if (!$_SESSION['beck_signup_adm']) {
+        if (!$_SESSION['can_add']) {
             redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
         }
 
@@ -91,6 +114,7 @@ class Beck_signup_actions
                 `number`,
                 `setup`,
                 `enable`,
+                `candidate`,
                 `uid`
             ) values(
                 '{$title}',
@@ -100,19 +124,27 @@ class Beck_signup_actions
                 '{$number}',
                 '{$setup}',
                 '{$enable}',
+                '{$candidate}',
                 '{$uid}'
             )";
         $xoopsDB->queryF($sql) or Utility::web_error($sql, __FILE__, __LINE__);
 
         //取得最後新增資料的流水編號
         $id = $xoopsDB->getInsertId();
+        //取得最後新增資料的流水編號
+        $id = $xoopsDB->getInsertId();
+
+        $TadUpFiles = new TadUpFiles("beck_signup");
+        $TadUpFiles->set_col('action_id', $id);
+        $TadUpFiles->upload_file('upfile', 1280, 240, null, null, true);
+
         return $id;
     }
 
     //以流水號秀出某筆資料內容
     public static function show($id = '')
     {
-        global  $xoopsTpl,$xoopsUser;
+        global  $xoopsDB,$xoopsTpl,$xoopsUser;
 
         if (empty($id)) {
             return;
@@ -138,15 +170,37 @@ class Beck_signup_actions
 
         BootstrapTable::render();
 
-        $uid = $xoopsUser ? $xoopsUser->uid() : 0;
-        $xoopsTpl->assign("uid", $uid);
+        $now_uid  = $xoopsUser ? $xoopsUser->uid() : 0;
+        // var_dump($now_uid);die();
+        $xoopsTpl->assign("now_uid", $now_uid);
+
+        $titles = self::get_tdc_title($data['setup']);
+        $xoopsTpl->assign("titles", $titles);
+
+
     }
+    // 取得標題
+    public static function get_tdc_title($setup = '')
+    {
+        $titles = [];
+
+        // 先找出選項類的題目
+        $setup_items = explode("\n", $setup);
+        foreach ($setup_items as $setup_item) {
+            if (substr($setup_item, 0, 1) != '#') {
+                $items = explode(",", $setup_item);
+                $titles[] = str_replace(['*', "\r", ' '], '', $items[0]);
+            }
+        }
+        return $titles;
+    }
+    
 
     //更新某一筆資料
     public static function update($id = '')
     {
-        global $xoopsDB;
-        if (!$_SESSION['beck_signup_adm']) {
+        global $xoopsDB , $xoopsUser;
+        if (!$_SESSION['can_add']) {
             redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
         }
 
@@ -158,19 +212,33 @@ class Beck_signup_actions
         foreach ($_POST as $var_name => $var_val) {
             $$var_name = $myts->addSlashes($var_val);
         }
+        $uid = (int) $uid;
+        $number = (int) $number;
+        $enable = (int) $enable;
+
+        $now_uid = $xoopsUser ? $xoopsUser->uid() : 0;
+        if ($uid != $now_uid && !$_SESSION['beck_signup_adm']) {
+            redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
+        }
+
 
         $sql = "update `" . $xoopsDB->prefix("beck_signup_actions") . "` set
-        `title`       = '{$title}',
-        `detail`      = '{$detail}',
-        `action_date` = '{$action_date}',
-        `end_date`    = '{$end_date}',
-        `number`      = '{$number}',
-        `setup`       = '{$setup}',
-        `enable`      = '{$enable}',
-        `uid`         = '{$uid}'
-        where `id` = '$id'";
+                `title`       = '{$title}',
+                `detail`      = '{$detail}',
+                `action_date` = '{$action_date}',
+                `end_date`    = '{$end_date}',
+                `number`      = '{$number}',
+                `setup`       = '{$setup}',
+                `enable`      = '{$enable}',
+                `candidate`   = '{$candidate}',
+                `uid`         = '{$uid}'
+            where `id`          = '$id'";
         // echo($sql);die();
         $xoopsDB->queryF($sql) or Utility::web_error($sql, __FILE__, __LINE__);
+
+        $TadUpFiles = new TadUpFiles("beck_signup");
+        $TadUpFiles->set_col('action_id', $id);
+        $TadUpFiles->upload_file('upfile', 1280, 240, null, null, true);
 
         return $id;
     }
@@ -178,17 +246,28 @@ class Beck_signup_actions
     //刪除某筆資料資料
     public static function destroy($id = '')
     {
-        global $xoopsDB;
-        if (!$_SESSION['beck_signup_adm']) {
+        global $xoopsDB ,$xoopsUser;
+        if (!$_SESSION['can_add']) {
             redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
         }
         if (empty($id)) {
             return;
         }
 
+        $action = self::get($id);
+        $now_uid = $xoopsUser ? $xoopsUser->uid() : 0;
+        if ($action['uid']  != $now_uid && !$_SESSION['beck_signup_adm']) {
+            redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
+        }
+
         $sql = "delete from `" . $xoopsDB->prefix("beck_signup_actions") . "`
         where `id` = '{$id}'";
         $xoopsDB->queryF($sql) or Utility::web_error($sql, __FILE__, __LINE__);
+
+        $TadUpFiles = new TadUpFiles("beck_signup");
+        $TadUpFiles->set_col('action_id', $id);
+        $TadUpFiles->del_files();
+
     }
 
     //以流水號取得某筆資料
@@ -202,27 +281,45 @@ class Beck_signup_actions
 
         $sql = "select * from `" . $xoopsDB->prefix("beck_signup_actions") . "`
         where `id` = '{$id}'";
+        // echo($sql);die();
         $result = $xoopsDB->query($sql) or Utility::web_error($sql, __FILE__, __LINE__);
         $data = $xoopsDB->fetchArray($result);
 
         if ($filter) {
             $myts = \MyTextSanitizer::getInstance();
-            $data['detail'] = $myts->displayTarea($data['detail'], 0, 1, 0, 1, 1);
+            $data['detail'] = $myts->displayTarea($data['detail'], 1, 0, 0, 0, 0);
             $data['title'] = $myts->htmlSpecialChars($data['title']);
         }
+
+        
+        $TadUpFiles = new TadUpFiles('beck_signup');
+        $TadUpFiles->set_col('action_id', $id);
+        $data['files']  = $TadUpFiles->show_files('upfile', false,'filename');
 
         return $data;
     }
 
     //取得所有資料陣列
-    public static function get_all($only_enable = true, $auto_key = false)
+    public static function get_all($only_enable = true, $auto_key = false, $show_number = 0, $order = ",`action_date` desc")
     {
-        global $xoopsDB;
+        global $xoopsDB ,$xoopsModuleConfig, $xoopsTpl;
         $myts = \MyTextSanitizer::getInstance();
 
-        $and_enable = $only_enable ? " and `enable`=1 and `action_date` >= now() " : '';
+        $and_enable = $only_enable ? " and `enable`=1 and `end_date` >= now() " : '';
+        $limit = $show_number ? "limit 0, $show_number" : '';
 
-        $sql = "select * from `" . $xoopsDB->prefix("beck_signup_actions") . "` where 1  $and_enable";
+        $sql = "select * from `" . $xoopsDB->prefix("beck_signup_actions") . "` where 1  $and_enable order by `enable` $order $limit";
+
+        if (!$show_number) {
+            //Utility::getPageBar($原sql語法, 每頁顯示幾筆資料, 最多顯示幾個頁數選項);
+            $PageBar = Utility::getPageBar($sql, $xoopsModuleConfig['show_number'], 10);
+            $bar = $PageBar['bar'];
+            $sql = $PageBar['sql'];
+            $total = $PageBar['total'];
+            $xoopsTpl->assign('bar', $bar);
+            $xoopsTpl->assign('total', $total);
+        }
+
         $result = $xoopsDB->query($sql) or Utility::web_error($sql, __FILE__, __LINE__);
         $data_arr = [];
         while ($data = $xoopsDB->fetchArray($result)) {
@@ -231,8 +328,8 @@ class Beck_signup_actions
             // $data['HTML文字欄'] = $myts->displayTarea($data['HTML文字欄'], 1, 0, 0, 0, 0);
             // $data['數字欄'] = (int) $data['數字欄'];
             $data['title'] = $myts->htmlSpecialChars($data['title']);
-            $data['detail'] = $myts->displayTarea($data['detail'], 0, 1, 0, 1, 1);
-            $data['setup'] = $myts->displayTarea($data['setup'], 0, 1, 0, 1, 1);
+            $data['detail'] = $myts->displayTarea($data['detail'], 1, 0, 0, 0, 0);
+            // $data['setup'] = $myts->displayTarea($data['setup'], 0, 1, 0, 1, 1);
             $data['signup'] = Beck_signup_data::get_all($data['id']);
 
 
@@ -249,7 +346,7 @@ class Beck_signup_actions
     public static function copy($id)
     {
         global $xoopsDB, $xoopsUser;
-        if (!$_SESSION['beck_signup_adm']) {
+        if (!$_SESSION['can_add']) {
             redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
         }
 
@@ -266,7 +363,8 @@ class Beck_signup_actions
         `number`,
         `setup`,
         `uid`,
-        `enable`
+        `enable`,
+        `candidate`
         ) values(
         '{$action['title']}_copy',
         '{$action['detail']}',
@@ -275,7 +373,8 @@ class Beck_signup_actions
         '{$action['number']}',
         '{$action['setup']}',
         '{$uid}',
-        '0'
+        '0',
+        '{$action['candidate']}'
         )";
         $xoopsDB->queryF($sql) or Utility::web_error($sql, __FILE__, __LINE__);
 

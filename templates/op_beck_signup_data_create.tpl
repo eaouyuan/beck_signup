@@ -17,6 +17,8 @@
     <small>
         <i class="fa fa-calendar-check-o" aria-hidden="true"></i> 報名截止日期：<{$action.end_date}>
         <i class="fa fa-users" aria-hidden="true"></i> 報名人數上限：<{$action.number}>
+        <{if $action.candidate}><span data-toggle="tooltip" title="可候補人數">(<{$action.candidate}>)</span><{/if}>
+
     </small>
 </h3>
 
@@ -37,8 +39,8 @@
 </form>
 
 
-<{if $smarty.session.beck_signup_adm}>
+<{if $smarty.session.can_add}>
     <div class="bar">
-        <a href="index.php?op=beck_signup_actions_edit&id=<{$action.id}>" class="btn btn-warning"><i class="fa fa-pencil" aria-hidden="true"></i> 編輯活動</a>
+        <a href="<{$xoops_url}>/modules/beck_signup/index.php?op=beck_signup_actions_edit&id=<{$action.id}>" class="btn btn-warning"><i class="fa fa-pencil" aria-hidden="true"></i> 編輯活動</a>
     </div>
 <{/if}>

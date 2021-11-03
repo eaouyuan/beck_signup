@@ -17,6 +17,8 @@
     <small>
         <i class="fa fa-calendar-check-o" aria-hidden="true"></i> 報名截止日期：<{$action.end_date}>
         <i class="fa fa-users" aria-hidden="true"></i> 報名人數上限：<{$action.number}>
+        <{if $action.candidate}><span data-toggle="tooltip" title="可候補人數">(<{$action.candidate}>)</span><{/if}>
+
     </small>
 </h3>
 
@@ -35,12 +37,12 @@
 
 <{if $smarty.session.beck_signup_adm || $uid==$now_uid}>
     <div class="bar">
-        <a href="index.php?op=beck_signup_data_edit&action_id=<{$action_id}>&id=<{$id}>" class="btn btn-warning">
+        <a href="<{$xoops_url}>/modules/beck_signup/index.php?op=beck_signup_data_edit&action_id=<{$action_id}>&id=<{$id}>" class="btn btn-warning">
             <i class="fa fa-pencil" aria-hidden="true"></i> 修改報名資料
         </a>
         <a href="javascript:del_data('<{$id}>')" class="btn btn-danger">
             <i class="fa fa-times" aria-hidden="true"></i> 取消報名
         </a>
-        <!-- <a href="index.php?op=beck_signup_data_destroy&id=<{$id}>&action_id=<{$action_id}>" class="btn btn-danger"><i class="fa fa-times" aria-hidden="true"></i> 取消報名</a> -->
+        <!-- <a href="<{$xoops_url}>/modules/beck_signup/index.php?op=beck_signup_data_destroy&id=<{$id}>&action_id=<{$action_id}>" class="btn btn-danger"><i class="fa fa-times" aria-hidden="true"></i> 取消報名</a> -->
     </div>
 <{/if}>

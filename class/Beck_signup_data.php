@@ -28,7 +28,7 @@ class Beck_signup_data
     {
         global $xoopsTpl ,$xoopsUser;
 
-        $uid = $_SESSION['beck_signup_adm'] ? null : $xoopsUser->uid();
+        $uid = $_SESSION['can_add'] ? null : $xoopsUser->uid();
 
         //抓取預設值
         $db_values = empty($id) ? [] : self::get($id ,$uid);
@@ -51,12 +51,14 @@ class Beck_signup_data
         $token_form = $token->render();
         $xoopsTpl->assign("token_form", $token_form);
 
-        $action=Beck_signup_actions::get($action_id,true);
         $action['signup'] = Beck_signup_data::get_all($action_id);
-
-        if (time() > strtotime($action['end_date'])) {
+        
+        $action=Beck_signup_actions::get($action_id,true);
+        if (!$action['enable']) {
+            redirect_header($_SERVER['PHP_SELF'] . "?id=$action_id", 3, "該報名已關閉，無法再進行報名或修改報名");
+        }elseif (time() > strtotime($action['end_date'])) {
             redirect_header($_SERVER['PHP_SELF'] . "?id=$action_id", 3, "已報名截止，無法再進行報名或修改報名");
-        } elseif (count($action['signup']) >= $action['number']) {
+        } elseif (count($action['signup']) >= ($action['number'] + $action['candidate'])) {
             redirect_header($_SERVER['PHP_SELF'] . "?id=$action_id", 3, "人數已滿，無法再進行報名");
         }
 
@@ -67,6 +69,7 @@ class Beck_signup_data
 
         $TadDataCenter = new TadDataCenter('beck_signup');
         $TadDataCenter->set_col('id', $id);
+
         $signup_form = $TadDataCenter->strToForm($action['setup']);
         $xoopsTpl->assign('signup_form', $signup_form);
 
@@ -107,8 +110,16 @@ class Beck_signup_data
         $TadDataCenter = new TadDataCenter('beck_signup');
         $TadDataCenter->set_col('id', $id);
         $TadDataCenter->saveData();
-        return $id;
-    }
+            
+        // 若是超過名額，註記為「候補」
+        $action = Beck_signup_actions::get($action_id, true);
+        $action['signup'] = Beck_signup_data::get_all($action_id);
+        if (count($action['signup']) >= $action['number']) {
+            $TadDataCenter->set_col('data_id', $id);
+            $TadDataCenter->saveCustomData(['tag' => ['候補']]);
+        }
+            return $id;
+        }
 
     //以流水號秀出某筆資料內容
     public static function show($id = '')
@@ -120,7 +131,7 @@ class Beck_signup_data
         }
     
         $id = (int) $id;
-        $uid = $_SESSION['beck_signup_adm'] ? null : $xoopsUser->uid();
+        $uid = $_SESSION['can_add'] ? null : $xoopsUser->uid();
         $data = self::get($id ,$uid);
 
         if (empty($data)) {
@@ -201,6 +212,8 @@ class Beck_signup_data
             $TadDataCenter = new TadDataCenter('beck_signup');
             $TadDataCenter->set_col('id', $id);
             $TadDataCenter->delData();
+            $TadDataCenter->set_col('data_id', $id);
+            $TadDataCenter->delData();
         } else {
             Utility::web_error($sql, __FILE__, __LINE__);
         }
@@ -233,13 +246,13 @@ class Beck_signup_data
         if ($action_id) {
             $sql = "select * from `" . $xoopsDB->prefix("beck_signup_data") . "` where `action_id`='$action_id'  order by `signup_date`";
         } else {
-            if (!$_SESSION['beck_signup_adm'] or !$uid) {
+            if (!$_SESSION['can_add'] or !$uid) {
                 $uid = $xoopsUser ? $xoopsUser->uid() : 0;
             }
             $sql = "select * from `" . $xoopsDB->prefix("beck_signup_data") . "` where `uid`='$uid' order by `signup_date`";
         }
 
-
+        // echo($sql);die();
         $result = $xoopsDB->query($sql) or Utility::web_error($sql, __FILE__, __LINE__);
         $data_arr = [];
         $TadDataCenter = new TadDataCenter('beck_signup');
@@ -247,6 +260,9 @@ class Beck_signup_data
             $TadDataCenter->set_col('id', $data['id']);
             $data['tdc'] = $TadDataCenter->getData();
             $data['action'] = Beck_signup_actions::get($data['action_id'],true);
+            $TadDataCenter->set_col('data_id', $data['id']);
+            $data['tag'] = $TadDataCenter->getData('tag', 0);
+
 
             if ($_SESSION['api_mode'] or $auto_key) {
                 $data_arr[] = $data;
@@ -274,7 +290,7 @@ class Beck_signup_data
     {
         global $xoopsDB;
 
-        if (!$_SESSION['beck_signup_adm']) {
+        if (!$_SESSION['can_add']) {
             redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
         }
 
@@ -324,6 +340,8 @@ class Beck_signup_data
     // 產生通知信
     public static function mail($id, $type, $signup = [])
     {
+      
+
         global $xoopsUser;
         $id = (int) $id;
         if (empty($id)) {
@@ -346,12 +364,100 @@ class Beck_signup_data
             $title = "「{$action['title']}」取消報名通知";
             $content = "<p>您於 {$signup['signup_date']} 報名了「{$action['title']}」活動已於 {$now} 由 {$name} 取消報名。</p>";
             $content .= "欲重新報名，請連至 " . XOOPS_URL . "/modules/beck_signup/index.php?op=beck_signup_data_create&action_id={$action['id']}";
+            $foot = "欲重新報名，請連至 " . XOOPS_URL . "/modules/beck_signup/index.php?op=beck_signup_data_create&action_id={$action['id']}";
+        } elseif ($type == 'store') {
+            $title = "「{$action['title']}」報名完成通知";
+            $head = "<p>您於 {$signup['signup_date']} 報名「{$action['title']}」活動已於 {$now} 由 {$name} 報名完成。</p>";
+            $foot = "完整詳情，請連至 " . XOOPS_URL . "/modules/beck_signup/index.php?id={$signup['action_id']}";
+        } elseif ($type == 'update') {
+            $title = "「{$action['title']}」修改報名資料通知";
+            $head = "<p>您於 {$signup['signup_date']} 報名「{$action['title']}」活動已於 {$now} 由 {$name} 修改報名資料如下：</p>";
+            $foot = "完整詳情，請連至 " . XOOPS_URL . "/modules/beck_signup/index.php?id={$signup['action_id']}";
+        }elseif ($type == 'accept') {
+            $title = "「{$action['title']}」報名錄取狀況通知";
+            if ($signup['accept'] == 1) {
+                $head = "<p>您於 {$signup['signup_date']} 報名「{$action['title']}」活動經審核，<h2 style='color:blue'>恭喜錄取！</h2>您的報名資料如下：</p>";
+            } else {
+                $head = "<p>您於 {$signup['signup_date']} 報名「{$action['title']}」活動經審核，很遺憾的通知您，因名額有限，<span style='color:red;'>您並未錄取。</span>您的報名資料如下：</p>";
+            }
+            $foot = "完整詳情，請連至 " . XOOPS_URL . "/modules/beck_signup/index.php?id={$signup['action_id']}";
+    
+            $signupUser = $member_handler->getUser($signup['uid']);
+            $email = $signupUser->email();
         }
 
+        $content = self::mk_content($id, $head, $foot, $action);
+
+        // if (!self::send($title, $content, 'eaouyuan@gmail.com')) {
         if (!self::send($title, $content, $email)) {
-            redirect_header($_SERVER['PHP_SELF'], 3, "通知信寄發失敗！");
+            redirect_header($_SERVER['PHP_SELF'], 3, "為何通知信寄發失敗！");
         }
         self::send($title, $content, $adm_email);
+    }
+
+    // 產生通知信內容
+    public static function mk_content($id, $head = '', $foot = '', $action = [])
+    {
+        if ($id) {
+            $TadDataCenter = new TadDataCenter('beck_signup');
+            $TadDataCenter->set_col('id', $id);
+            $tdc = $TadDataCenter->getData();
+
+            $table = '<table class="table">';
+            foreach ($tdc as $title => $signup) {
+                $table .= "
+                <tr>
+                    <th>{$title}</th>
+                    <td>";
+                foreach ($signup as $i => $val) {
+                    $table .= "<div>{$val}</div>";
+                }
+
+                $table .= "</td>
+                </tr>";
+            }
+            $table .= '</table>';
+        }
+
+        $content = "
+        <html>
+            <head>
+                <style>
+                    .table{
+                        border:1px solid #000;
+                        border-collapse: collapse;
+                        margin:10px 0px;
+                    }
+
+                    .table th, .table td{
+                        border:1px solid #000;
+                        padding: 4px 10px;
+                    }
+
+                    .table th{
+                        background:#c1e7f4;
+                    }
+
+                    .well{
+                        border-radius: 10px;
+                        background: #fcfcfc;
+                        border: 2px solid #cfcfcf;
+                        padding:14px 16px;
+                        margin:10px 0px;
+                    }
+                </style>
+            </head>
+            <body>
+            $head
+            <h2>{$action['title']}</h2>
+            <div>活動日期：{$action['action_date']}</div>
+            <div class='well'>{$action['detail']}</div>
+            $table
+            $foot
+            </body>
+        </html>
+        ";
+        return $content;
     }
 
 }
