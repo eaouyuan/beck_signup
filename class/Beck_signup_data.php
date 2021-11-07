@@ -460,4 +460,158 @@ class Beck_signup_data
         return $content;
     }
 
+    // 預覽 CSV
+    public static function preview_csv($action_id)
+    {
+        global $xoopsTpl;
+        if (!$_SESSION['can_add']) {
+            redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
+        }
+
+        $action = Beck_signup_actions::get($action_id);
+        $xoopsTpl->assign('action', $action);
+
+        // 製作標題
+        $head_row = explode("\n", $action['setup']);
+        $head = $type = [];
+        foreach ($head_row as $head_data) {
+            $cols = explode(',', $head_data);
+            if (strpos($cols[0], '#') === false) {
+                $head[] = str_replace('*', '', trim($cols[0]));
+                $type[] = trim($cols[1]);
+            }
+        }
+
+        $xoopsTpl->assign('head', $head);
+        $xoopsTpl->assign('type', $type);
+
+        // 抓取內容
+        $preview_data = [];
+        $handle = fopen($_FILES['csv']['tmp_name'], "r") or die("無法開啟");
+        while (($val = fgetcsv($handle, 1000)) !== false) {
+            $preview_data[] = mb_convert_encoding($val, 'UTF-8', 'Big5');
+        }
+        fclose($handle);
+        $xoopsTpl->assign('preview_data', $preview_data);
+
+        //加入Token安全機制
+        include_once $GLOBALS['xoops']->path('class/xoopsformloader.php');
+        $token = new \XoopsFormHiddenToken();
+        $token_form = $token->render();
+        $xoopsTpl->assign("token_form", $token_form);
+
+    }
+
+    //批次匯入 CSV
+    public static function import_csv($action_id)
+    {
+        global $xoopsDB, $xoopsUser;
+
+        //XOOPS表單安全檢查
+        Utility::xoops_security_check();
+
+        if (!$_SESSION['can_add']) {
+            redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
+        }
+
+        $action_id = (int) $action_id;
+        $uid = $xoopsUser->uid();
+
+        $action = Beck_signup_actions::get($action_id);
+
+        $TadDataCenter = new TadDataCenter('beck_signup');
+
+        foreach ($_POST['tdc'] as $tdc) {
+            $sql = "insert into `" . $xoopsDB->prefix("beck_signup_data") . "` (
+            `action_id`,
+            `uid`,
+            `signup_date`,
+            `accept`
+            ) values(
+            '{$action_id}',
+            '{$uid}',
+            now(),
+            '1'
+            )";
+            $xoopsDB->queryF($sql) or Utility::web_error($sql, __FILE__, __LINE__);
+            $id = $xoopsDB->getInsertId();
+
+            $TadDataCenter->set_col('id', $id);
+            $TadDataCenter->saveCustomData($tdc);
+
+            $action['signup'] = self::get_all($action_id);
+            if (count($action['signup']) > $action['number']) {
+                $TadDataCenter->set_col('data_id', $id);
+                $TadDataCenter->saveCustomData(['tag' => ['候補']]);
+            }
+        }
+    }
+
+    public static function preview_excel($action_id){
+        global $xoopsTpl;
+        if (!$_SESSION['can_add']) {
+            redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
+        }
+
+        $action = Beck_signup_actions::get($action_id);
+        $xoopsTpl->assign('action', $action);
+
+        // 製作標題
+        $head_row = explode("\n", $action['setup']);
+        $head = $type = [];
+        foreach ($head_row as $head_data) {
+            $cols = explode(',', $head_data);
+            if (strpos($cols[0], '#') === false) {
+                $head[] = str_replace('*', '', trim($cols[0]));
+                $type[] = trim($cols[1]);
+            }
+        }
+
+        $xoopsTpl->assign('head', $head);
+        $xoopsTpl->assign('type', $type);
+
+        // 抓取內容
+        $preview_data = [];
+
+        require_once XOOPS_ROOT_PATH . '/modules/tadtools/vendor/phpoffice/phpexcel/Classes/PHPExcel/IOFactory.php';
+        $reader = \PHPExcel_IOFactory::createReader('Excel2007');
+        $PHPExcel = $reader->load($_FILES['excel']['tmp_name']); // 檔案名稱
+        $sheet = $PHPExcel->getSheet(0); // 讀取第一個工作表(編號從 0 開始)
+        $maxCell = $PHPExcel->getActiveSheet()->getHighestRowAndColumn();
+        $maxColumn = self::getIndex($maxCell['column']);
+
+        // 一次讀一列
+        for ($row = 1; $row <= $maxCell['row']; $row++) {
+            // 讀出每一格
+            for ($column = 0; $column <= $maxColumn; $column++) {
+                $preview_data[$row][$column] = $sheet->getCellByColumnAndRow($column, $row)->getCalculatedValue();
+            }
+        }
+
+        $xoopsTpl->assign('preview_data', $preview_data);
+
+        //加入Token安全機制
+        include_once $GLOBALS['xoops']->path('class/xoopsformloader.php');
+        $token = new \XoopsFormHiddenToken();
+        $token_form = $token->render();
+        $xoopsTpl->assign("token_form", $token_form);
+    }
+
+    // 將文字轉為數字
+    function getIndex($let)
+    {
+        // Iterate through each letter, starting at the back to increment the value
+        for ($num = 0, $i = 0; $let != ''; $let = substr($let, 0, -1), $i++) {
+            $num += (ord(substr($let, -1)) - 65) * pow(26, $i);
+        }
+    
+        return $num;
+    }
+
+    // 匯入 Excel
+    public static function import_excel($action_id)
+    {
+        self::import_csv($action_id);
+    }
+
 }

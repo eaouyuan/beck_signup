@@ -108,6 +108,29 @@ switch ($op) {
         header("location: {$_SERVER['PHP_SELF']}?op=beck_signup_actions_edit&id=$new_id");
         exit;
 
+    // 匯入 CSV 並預覽
+    case 'beck_signup_data_preview_csv':
+        Beck_signup_data::preview_csv($id);
+        break;
+
+        
+    //批次匯入 CSV
+    case 'beck_signup_data_import_csv':
+        Beck_signup_data::import_csv($id);
+        redirect_header("{$_SERVER['PHP_SELF']}?id=$id", 3, "成功匯入報名資料！");
+        break;
+
+    // 匯入 Excel 並預覽
+    case 'beck_signup_data_preview_excel':
+        Beck_signup_data::preview_excel($id);
+        break;
+
+    //批次匯入 Excel
+    case 'beck_signup_data_import_excel':
+        Beck_signup_data::import_excel($id);
+        redirect_header("{$_SERVER['PHP_SELF']}?id=$id", 3, "成功匯入報名資料！");
+        break;
+
     default:
     if (empty($id)) {
         Beck_signup_actions::index($xoopsModuleConfig['only_enable']);
