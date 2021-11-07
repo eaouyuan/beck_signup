@@ -469,6 +469,8 @@ class Beck_signup_data
         }
 
         $action = Beck_signup_actions::get($action_id);
+        // 目前已報名人數
+        $action['signup_count'] = count(Beck_signup_data::get_all($action_id));
         $xoopsTpl->assign('action', $action);
 
         // 製作標題
@@ -555,6 +557,8 @@ class Beck_signup_data
         }
 
         $action = Beck_signup_actions::get($action_id);
+        // 目前已報名人數
+        $action['signup_count'] = count(Beck_signup_data::get_all($action_id));
         $xoopsTpl->assign('action', $action);
 
         // 製作標題
