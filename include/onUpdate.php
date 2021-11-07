@@ -31,7 +31,7 @@ function xoops_module_pre_update_beck_signup(XoopsModule $module, $old_version)
         $perm->setVar('gperm_itemid', 1);  //權限編號
         $perm->setVar('gperm_name', $module->dirname()); // 權限名稱，一般為模組目錄名稱
         $perm->setVar('gperm_modid', $module->mid()); //模組編號
-        $perm_handler->insert($perm);
+        $gperm_handler->insert($perm);
     }
 }
 

@@ -472,18 +472,19 @@ class Beck_signup_data
         $xoopsTpl->assign('action', $action);
 
         // 製作標題
-        $head_row = explode("\n", $action['setup']);
-        $head = $type = [];
-        foreach ($head_row as $head_data) {
-            $cols = explode(',', $head_data);
-            if (strpos($cols[0], '#') === false) {
-                $head[] = str_replace('*', '', trim($cols[0]));
-                $type[] = trim($cols[1]);
-            }
-        }
-
+        list($head, $type, $options) = self::get_head($action, true, true);
         $xoopsTpl->assign('head', $head);
         $xoopsTpl->assign('type', $type);
+        $xoopsTpl->assign('options', $options);
+        // $head_row = explode("\n", $action['setup']);
+        // $head = $type = [];
+        // foreach ($head_row as $head_data) {
+        //     $cols = explode(',', $head_data);
+        //     if (strpos($cols[0], '#') === false) {
+        //         $head[] = str_replace('*', '', trim($cols[0]));
+        //         $type[] = trim($cols[1]);
+        //     }
+        // }
 
         // 抓取內容
         $preview_data = [];
@@ -557,18 +558,11 @@ class Beck_signup_data
         $xoopsTpl->assign('action', $action);
 
         // 製作標題
-        $head_row = explode("\n", $action['setup']);
-        $head = $type = [];
-        foreach ($head_row as $head_data) {
-            $cols = explode(',', $head_data);
-            if (strpos($cols[0], '#') === false) {
-                $head[] = str_replace('*', '', trim($cols[0]));
-                $type[] = trim($cols[1]);
-            }
-        }
-
+        // 製作標題
+        list($head, $type, $options) = self::get_head($action, true, true);
         $xoopsTpl->assign('head', $head);
         $xoopsTpl->assign('type', $type);
+        $xoopsTpl->assign('options', $options);
 
         // 抓取內容
         $preview_data = [];
@@ -614,4 +608,24 @@ class Beck_signup_data
         self::import_csv($action_id);
     }
 
+    //取得報名的標題欄
+    public static function get_head($action, $return_type = false, $only_tdc = false)
+    {
+        $TadDataCenter = new TadDataCenter('beck_signup');
+        $head = $TadDataCenter->getAllColItems($action['setup'], 'label');
+        $type = $TadDataCenter->getAllColItems($action['setup'], 'type');
+        $options = $TadDataCenter->getAllColItems($action['setup'], 'options');
+
+        if (!$only_tdc) {
+            $head[] = _MD_TAD_SIGNUP_ACCEPT;
+            $head[] = _MD_TAD_SIGNUP_APPLY_DATE;
+            $head[] = _MD_TAD_SIGNUP_IDENTITY;
+        }
+
+        if ($return_type) {
+            return [$head, $type, $options];
+        } else {
+            return $head;
+        }
+    }
 }

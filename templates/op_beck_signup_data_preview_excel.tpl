@@ -10,24 +10,39 @@
         </thead>
         <tbody>
             <{foreach from=$preview_data key=i item=data name=preview_data}>
-                <{if $smarty.foreach.preview_data.iteration > 1}> <!-- 第一行是標題，不抓，第二行開始 -->
+                <{if $smarty.foreach.preview_data.iteration > 1}>
                     <tr>
                         <{foreach from=$data key=j item=val}>
-                            <!-- 樣版設定變數 https://www.smarty.net/docs/zh_CN/language.function.foreach.tpl -->
                             <{assign var=title value=$head.$j}>
                             <{assign var=input_type value=$type.$j}>
+                            <{assign var=input_options value=$options.$j}>
                             <{if $title!=''}>
                                 <td>
                                     <{if $input_type=="checkbox"}>
-                                        <{assign var=val_arr value='|'|explode:$val}> <!--  |前面是參數1, 後面:是參數2, explode string to array-->
-                                        <{foreach from=$val_arr item=val}>
+                                        <{assign var=val_arr value='|'|explode:$val}>
+                                        <{foreach from=$input_options item=opt}>
                                             <div class="form-check-inline checkbox-inline">
                                                 <label class="form-check-label">
-                                                    <input class="form-check-input" type="checkbox" name="tdc[<{$i}>][<{$title}>][]" value="<{$val}>" checked>
-                                                    <{$val}>
+                                                    <input class="form-check-input" type="checkbox" name="tdc[<{$i}>][<{$title}>][]" value="<{$opt}>" <{if $opt|in_array:$val_arr}>checked<{/if}>>
+                                                    <{$opt}>
                                                 </label>
                                             </div>
                                         <{/foreach}>
+                                    <{elseif $input_type=="radio"}>
+                                        <{foreach from=$input_options item=opt}>
+                                            <div class="form-check-inline radio-inline">
+                                                <label class="form-check-label">
+                                                    <input class="form-check-input" type="radio" name="tdc[<{$i}>][<{$title}>]" value="<{$opt}>" <{if $opt==$val}>checked<{/if}>>
+                                                    <{$opt}>
+                                                </label>
+                                            </div>
+                                        <{/foreach}>
+                                    <{elseif $input_type=="select"}>
+                                        <select name="tdc[<{$i}>][<{$title}>]" class="form-control validate[required]">
+                                            <{foreach from=$input_options item=opt}>
+                                                <option value="<{$opt}>" <{if $opt==$val}>selected<{/if}>><{$opt}></option>
+                                            <{/foreach}>
+                                        </select>
                                     <{else}>
                                         <input type="text" name="tdc[<{$i}>][<{$title}>]" value="<{$val}>" class="form-control form-control-sm">
                                     <{/if}>
