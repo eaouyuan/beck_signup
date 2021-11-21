@@ -10,6 +10,7 @@ use XoopsModules\Beck_signup\Beck_signup_actions;
 use XoopsModules\Tadtools\TadDataCenter;
 use XoopsModules\Tadtools\SweetAlert;
 use XoopsModules\Tadtools\BootstrapTable;
+use XoopsModules\Tadtools\Tmt; //雙框挑選器
 
 
 class Beck_signup_data
@@ -51,14 +52,14 @@ class Beck_signup_data
         $token_form = $token->render();
         $xoopsTpl->assign("token_form", $token_form);
 
-        $action['signup'] = Beck_signup_data::get_all($action_id);
+        // $action['signup'] = Beck_signup_data::get_all($action_id);
         
         $action=Beck_signup_actions::get($action_id,true);
         if (!$action['enable']) {
             redirect_header($_SERVER['PHP_SELF'] . "?id=$action_id", 3, "該報名已關閉，無法再進行報名或修改報名");
         }elseif (time() > strtotime($action['end_date'])) {
             redirect_header($_SERVER['PHP_SELF'] . "?id=$action_id", 3, "已報名截止，無法再進行報名或修改報名");
-        } elseif (count($action['signup']) >= ($action['number'] + $action['candidate'])) {
+        } elseif ($action['signup_count'] >= ($action['number'] + $action['candidate'])) {
             redirect_header($_SERVER['PHP_SELF'] . "?id=$action_id", 3, "人數已滿，無法再進行報名");
         }
 
@@ -114,7 +115,7 @@ class Beck_signup_data
         // 若是超過名額，註記為「候補」
         $action = Beck_signup_actions::get($action_id, true);
         $action['signup'] = Beck_signup_data::get_all($action_id);
-        if (count($action['signup']) >= $action['number']) {
+        if (count($action['signup'])>= $action['number']) {
             $TadDataCenter->set_col('data_id', $id);
             $TadDataCenter->saveCustomData(['tag' => ['候補']]);
         }
@@ -238,18 +239,20 @@ class Beck_signup_data
     }
 
     //取得所有資料陣列
-    public static function get_all($action_id='',$uid='',$auto_key = false)
+    public static function get_all($action_id='',$uid='',$auto_key = false,$only_accept = false)
     {
         global $xoopsDB ,$xoopsUser;
         $myts = \MyTextSanitizer::getInstance();
         
+        $and_accept = $only_accept ? "and `accept`='1'" : '';
+
         if ($action_id) {
-            $sql = "select * from `" . $xoopsDB->prefix("beck_signup_data") . "` where `action_id`='$action_id'  order by `signup_date`";
+            $sql = "select * from `" . $xoopsDB->prefix("beck_signup_data") . "` where `action_id`='$action_id'  $and_accept order by `signup_date`";
         } else {
             if (!$_SESSION['can_add'] or !$uid) {
                 $uid = $xoopsUser ? $xoopsUser->uid() : 0;
             }
-            $sql = "select * from `" . $xoopsDB->prefix("beck_signup_data") . "` where `uid`='$uid' order by `signup_date`";
+            $sql = "select * from `" . $xoopsDB->prefix("beck_signup_data") . "` where `uid`='$uid' $and_accept order by `signup_date`";
         }
 
         // echo($sql);die();
@@ -478,15 +481,6 @@ class Beck_signup_data
         $xoopsTpl->assign('head', $head);
         $xoopsTpl->assign('type', $type);
         $xoopsTpl->assign('options', $options);
-        // $head_row = explode("\n", $action['setup']);
-        // $head = $type = [];
-        // foreach ($head_row as $head_data) {
-        //     $cols = explode(',', $head_data);
-        //     if (strpos($cols[0], '#') === false) {
-        //         $head[] = str_replace('*', '', trim($cols[0]));
-        //         $type[] = trim($cols[1]);
-        //     }
-        // }
 
         // 抓取內容
         $preview_data = [];
@@ -562,7 +556,6 @@ class Beck_signup_data
         $xoopsTpl->assign('action', $action);
 
         // 製作標題
-        // 製作標題
         list($head, $type, $options) = self::get_head($action, true, true);
         $xoopsTpl->assign('head', $head);
         $xoopsTpl->assign('type', $type);
@@ -621,9 +614,9 @@ class Beck_signup_data
         $options = $TadDataCenter->getAllColItems($action['setup'], 'options');
 
         if (!$only_tdc) {
-            $head[] = _MD_TAD_SIGNUP_ACCEPT;
-            $head[] = _MD_TAD_SIGNUP_APPLY_DATE;
-            $head[] = _MD_TAD_SIGNUP_IDENTITY;
+            $head[] = '錄取';
+            $head[] = '報名日期';
+            $head[] = '身份';
         }
 
         if ($return_type) {
@@ -631,5 +624,38 @@ class Beck_signup_data
         } else {
             return $head;
         }
+    }
+
+    //進行pdf的匯出設定
+    public static function pdf_setup($action_id)
+    {
+        global $xoopsTpl;
+
+        $action = Beck_signup_actions::get($action_id);
+        $xoopsTpl->assign('action', $action);
+
+        $TadDataCenter = new TadDataCenter('beck_signup');
+        $TadDataCenter->set_col('pdf_setup_id', $action_id);
+        $pdf_setup_col=$TadDataCenter->getData('pdf_setup_col',0);
+        $to_arr = explode(',', $pdf_setup_col);
+
+        // 製作標題
+        $head_arr = self::get_head($action);
+        $from_arr = array_diff($head_arr, $to_arr);    
+
+        // var_dump($from_arr);die();
+        $hidden_arr = [];
+
+        // 雙框挑選器 重要
+        $tmt_box = Tmt::render('pdf_setup_col', $from_arr, $to_arr, $hidden_arr, true, false);
+        $xoopsTpl->assign('tmt_box', $tmt_box);
+    }
+
+    //儲存pdf的匯出設定
+    public static function pdf_setup_save($action_id, $pdf_setup_col = '')
+    {
+        $TadDataCenter = new TadDataCenter('beck_signup');
+        $TadDataCenter->set_col('pdf_setup_id', $action_id);
+        $TadDataCenter->saveCustomData(['pdf_setup_col' => [$pdf_setup_col]]);
     }
 }

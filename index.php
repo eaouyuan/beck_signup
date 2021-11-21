@@ -17,6 +17,9 @@ $id = Request::getInt('id');
 $action_id = Request::getInt('action_id');
 $accept = Request::getInt('accept');
 $files_sn = Request::getInt('files_sn');
+$pdf_setup_col = Request::getString('pdf_setup_col');
+$file = Request::getWord('file','pdf'); //限英文字及底線
+
 
 /*-----------執行動作判斷區----------*/
 switch ($op) {
@@ -130,6 +133,18 @@ switch ($op) {
         Beck_signup_data::import_excel($id);
         redirect_header("{$_SERVER['PHP_SELF']}?id=$id", 3, "成功匯入報名資料！");
         break;
+
+    // 進行pdf的匯出設定
+    case 'beck_signup_data_pdf_setup':
+        Beck_signup_data::pdf_setup($id);
+        break;
+
+        
+    //儲存pdf的匯出設定
+    case 'beck_signup_data_pdf_setup_save':
+        Beck_signup_data::pdf_setup_save($action_id, $pdf_setup_col);
+        header("location: {$file}_signup.php?id=$action_id");
+        exit;
 
     default:
     if (empty($id)) {

@@ -14,9 +14,9 @@ $id = Request::getInt('id');
 $type = Request::getString('type');
 
 $action = Beck_signup_actions::get($id);
-if ($action['uid'] != $xoopsUser->uid()) {
-    redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
-}
+// if ($action['uid'] != $xoopsUser->uid()) {
+//     redirect_header($_SERVER['PHP_SELF'], 3, "您沒有權限使用此功能");
+// }
 
 
 require_once XOOPS_ROOT_PATH . '/modules/tadtools/vendor/phpoffice/phpexcel/Classes/PHPExcel.php'; //引入 PHPExcel 物件庫
@@ -77,17 +77,7 @@ $objActSheet->setTitle($title); //設定標題
 $objPHPExcel->createSheet(); //建立新的工作表，上面那三行再來一次，編號要改
 
 // 抓出標題資料
-$head_row = explode("\n", $action['setup']);
-$head = [];
-foreach ($head_row as $head_data) {
-    $cols = explode(',', $head_data);
-    if (strpos($cols[0], '#') === false) {
-        $head[] = str_replace('*', '', trim($cols[0]));
-    }
-}
-$head[] = '錄取';
-$head[] = '報名日期';
-$head[] = '身份';
+$head = Beck_signup_data::get_head($action);
 $row = 1;
 foreach ($head as $column => $value) {
     $objActSheet->setCellValueByColumnAndRow($column, $row, $value); //直欄從0開始，橫列從1開始
@@ -130,7 +120,7 @@ if ($type == 'signup') {
 }
 unset($_SESSION['length']);
 // 以下是 utf8 convert big5
-// $title = (_CHARSET === 'UTF-8') ? iconv('UTF-8', 'Big5', $title) : $title;
+$title = (_CHARSET === 'UTF-8') ? iconv('UTF-8', 'Big5', $title) : $title;
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header("Content-Disposition: attachment;filename={$title}.xlsx");
 header('Cache-Control: max-age=0');

@@ -25,7 +25,7 @@ switch ($op) {
     case 'beck_signup_actions_store':
         $id = Beck_signup_actions::store();
         // header("location: {$_SERVER['PHP_SELF']}?id=$id");
-        redirect_header($_SERVER['PHP_SELF'] . "?id=$id", 3, "成功建立活動！");
+        redirect_header($_SERVER['PHP_SELF'] . "?id=$id", 3, _MA_BECK_SIGNUP_CREATE_SUCCESS);
         exit;
 
     //修改用表單
@@ -38,14 +38,14 @@ switch ($op) {
     case 'beck_signup_actions_update':
         Beck_signup_actions::update($id);
         // header("location: {$_SERVER['PHP_SELF']}?id=$id");
-        redirect_header($_SERVER['PHP_SELF'] . "?id=$id", 3, "成功修改活動！");
+        redirect_header($_SERVER['PHP_SELF'] . "?id=$id", 3, _MA_BECK_SIGNUP_UPDATE_SUCCESS);
         exit;
 
     //刪除資料
     case 'beck_signup_actions_destroy':
         Beck_signup_actions::destroy($id);
         // header("location: {$_SERVER['PHP_SELF']}");
-        redirect_header($_SERVER['PHP_SELF'] , 3, "成功刪除活動！");
+        redirect_header($_SERVER['PHP_SELF'] , 3, _MA_BECK_SIGNUP_DESTROY_SUCCESS);
         exit;
 
     default:

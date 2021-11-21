@@ -19,19 +19,7 @@ if ($action['uid'] != $xoopsUser->uid()) {
 }
 
 $csv = [];
-
-$head_row = explode("\n", $action['setup']);
-$head = [];
-foreach ($head_row as $head_data) {
-    $cols = explode(',', $head_data);
-    if (strpos($cols[0], '#') === false) {  //假如找到#，就傳回位置。 那如果沒有找到-> ===false
-        $head[] = str_replace('*', '', trim($cols[0]));
-    }
-}
-$head[] = '錄取';
-$head[] = '報名日期';
-$head[] = '身份';
-
+$head = Beck_signup_data::get_head($action);
 $csv[] = implode(',', $head);
 
 if ($type == 'signup') {

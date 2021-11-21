@@ -1,5 +1,5 @@
 <h2 class="my">
-    <{if $enable && ($number + $candidate) > $signup|@count && $end_date|strtotime >= $smarty.now}>
+    <{if $enable && ($number + $candidate) > $signup_count && $end_date|strtotime >= $smarty.now}>
         <i class="fa fa-check text-success" aria-hidden="true"></i>
     <{else}>
         <i class="fa fa-times text-danger" aria-hidden="true"></i>
@@ -11,6 +11,15 @@
 <div class="alert alert-info">
     <{$detail}>
 </div>
+
+<!-- AddToAny BEGIN 快速簡易轉換pdf--> 
+<div class="a2a_kit a2a_kit_size_32 a2a_default_style">
+    <a class="a2a_dd" href="https://www.addtoany.com/share"></a>
+    <a class="a2a_button_printfriendly"></a>
+    <a class="a2a_button_facebook"></a>
+</div>
+<script async src="https://static.addtoany.com/menu/page.js"></script>
+<!-- AddToAny END -->
 
 <{$files}>
 
@@ -29,10 +38,10 @@
         <tr>
             <{* <{foreach from=$signup.0.tdc key=col_name item=user name=tdc}> *}>
             <{foreach from=$titles  item=title }>
-                <th data-sortable="true"><{$title}></th>
+                <th data-sortable="true" nowrap class="c"><{$title}></th>
             <{/foreach}>
-            <th data-sortable="true">錄取</th>
-            <th data-sortable="true">報名日期</th>
+            <th data-sortable="true" nowrap class="c">錄取</th>
+            <th data-sortable="true" nowrap class="c">報名日期</th>
         </tr>
     </thead>
     <tbody>
@@ -112,17 +121,32 @@
 </table>
 <{if $smarty.session.can_add && $uid == $now_uid || ($smarty.session.beck_signup_adm)}>
     <div class="bar">
-        <a href="javascript:del_action('<{$id}>')" class="btn btn-danger">
-            <i class="fa fa-times" aria-hidden="true"></i> 刪除活動
-        </a>
-        <a href="<{$xoops_url}>/modules/beck_signup/index.php?op=beck_signup_actions_edit&id=<{$id}>" class="btn btn-warning">
-            <i class="fa fa-pencil" aria-hidden="true"></i> 編輯活動
-        </a>
-        <a href="<{$xoops_url}>/modules/beck_signup/csv.php?id=<{$id}>&type=signup" class="btn btn-primary">
-            <i class="fa fa-file-text-o" aria-hidden="true"></i> 匯出報名名單CSV</a>
-        <a href="<{$xoops_url}>/modules/beck_signup/excel.php?id=<{$id}>&type=signup" class="btn btn-success"><i class="fa fa-file-excel-o" aria-hidden="true"></i> 匯出Excel名單</a>
+        <div class="col mb-3">
+            <a href="javascript:del_action('<{$id}>')" class="btn btn-danger">
+                <i class="fa fa-times" aria-hidden="true"></i> 刪除活動
+            </a>
+            <a href="<{$xoops_url}>/modules/beck_signup/index.php?op=beck_signup_actions_edit&id=<{$id}>" class="btn btn-warning">
+                <i class="fa fa-pencil" aria-hidden="true"></i> 編輯活動
+            </a>
+            <a href="<{$xoops_url}>/modules/beck_signup/html.php?id=<{$action.id}>" class="btn  btn-primary"><i class="fa fa-html5" aria-hidden="true"></i> HTML</a>
+            <a href="<{$xoops_url}>/modules/beck_signup/index.php?op=beck_signup_data_pdf_setup&id=<{$id}>" class="btn btn-info"><i class="fa fa fa-save" aria-hidden="true"></i> 產生簽到表</a>
+        </div>
+
+        <div class="btn-group" role="group" aria-label="Basic example">
+            <a href="#" class="btn btn-secondary"><i class="fa fa-file-text-o" aria-hidden="true"></i> 匯出報名名單：</a>
+
+            <a href="<{$xoops_url}>/modules/beck_signup/csv.php?id=<{$id}>&type=signup" class="btn  btn-info">
+                <i class="fa fa-file-text-o" aria-hidden="true"></i> CSV</a>
+            <a href="<{$xoops_url}>/modules/beck_signup/excel.php?id=<{$id}>&type=signup" class="btn  btn-success"><i class="fa fa-file-excel-o" aria-hidden="true"></i> Excel</a>
+            <a href="<{$xoops_url}>/modules/beck_signup/pdf.php?id=<{$id}>" class="btn  btn-danger"><i class="fa fa-file-pdf-o" aria-hidden="true"></i> PDF</a>
+            <a href="<{$xoops_url}>/modules/beck_signup/word.php?id=<{$id}>" class="btn btn-primary"><i class="fa fa-file-word-o" aria-hidden="true"></i> Word</a>
+        </div>
+    </div>
+    <div class="bar">
+
     </div>
 
+    
     <form action="index.php" method="post" enctype="multipart/form-data">
         <div class="input-group">
             <div class="input-group-prepend input-group-addon">

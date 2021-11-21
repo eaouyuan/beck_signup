@@ -7,7 +7,7 @@ use XoopsModules\Beck_signup\Beck_signup_data;
 function action_signup($options)
 {
     $block = Beck_signup_actions::get($options[0], true);
-    $block['signup'] = Beck_signup_data::get_all($options[0], null, true);
+    $block['signup_count'] = count(Beck_signup_data::get_all($options[0], null, true));
     return $block;
 }
 
@@ -23,7 +23,7 @@ function action_signup_edit($options)
     $form = "
     <ol class='my-form'>
         <li class='my-row'>
-            <lable class='my-label'>請選擇一個活動</lable>
+            <lable class='my-label'>"._MB_TAD_SIGNUP_SELECT_ACTION."</lable>
             <div class='my-content'>
                 <select name='options[0]' class='my-input'>
                     $opt

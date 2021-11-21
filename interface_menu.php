@@ -24,3 +24,4 @@ if ($_SESSION[$is_admin]) {
     $interface_menu[_TAD_TO_ADMIN] = "admin/main.php";
     $interface_icon[_TAD_TO_ADMIN] = "fa-chevron-right";
 }
+
